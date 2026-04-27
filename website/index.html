@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bazaar Intel — Hypixel SkyBlock Price Predictions</title>
+  <meta name="description" content="AI-powered Hypixel SkyBlock Bazaar price predictions using a Transformer model with per-item learned behaviour."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<nav id="nav">
+  <div class="nav-left">
+    <div class="nav-logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke="#818cf8" stroke-width="2" stroke-linejoin="round"/><polyline points="9,22 9,12 15,12 15,22" stroke="#818cf8" stroke-width="2" stroke-linejoin="round"/></svg>
+      <span class="nav-title">Bazaar Intel</span>
+      <span class="nav-version">v3</span>
+    </div>
+    <div class="nav-tabs" role="tablist">
+      <button class="tab active" data-tab="picks"    role="tab">Picks</button>
+      <button class="tab"        data-tab="market"   role="tab">Market</button>
+      <button class="tab"        data-tab="stats"    role="tab">Stats</button>
+      <button class="tab"        data-tab="settings" role="tab">Settings</button>
+    </div>
+  </div>
+  <div class="nav-right">
+    <div class="search-box" id="search-box">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="search-input" type="text" placeholder="Search items…" autocomplete="off" spellcheck="false"/>
+    </div>
+    <div class="mayor-badge" id="mayor-badge">
+      <span class="muted">Mayor:</span>
+      <span id="mayor-text" style="color:var(--yellow);font-weight:500;">—</span>
+    </div>
+    <div class="live-dot-wrap" id="live-wrap">
+      <span class="live-dot" id="live-dot"></span>
+      <span id="live-text" class="live-text">--:--</span>
+    </div>
+    <button class="btn-icon" id="refresh-btn" title="Refresh now">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    </button>
+    <div class="countdown-pill">
+      <div class="countdown-bar" id="countdown-bar"></div>
+      <span id="countdown-text">60</span>s
+    </div>
+  </div>
+</nav>
+
+<div id="status-bar">
+  <div class="status-pill" title="Items currently tracked">
+    <span class="status-label">Items</span>
+    <span class="status-val mono" id="s-items">—</span>
+  </div>
+  <div class="status-pill" title="Date the model was last trained">
+    <span class="status-label">Model Date</span>
+    <span class="status-val mono" id="s-model-date">—</span>
+  </div>
+</div>
+
+<main id="main">
+
+  <!-- ── PICKS ──────────────────────────────────────────────────────────── -->
+  <div id="panel-picks" class="panel active">
+    <div class="panel-toolbar">
+      <div class="toolbar-left">
+      </div>
+      <div class="toolbar-right">
+        <label class="sort-label" for="sort-select">Sort by</label>
+        <select id="sort-select" class="sort-dropdown">
+          <option value="score">Score ↓</option>
+          <option value="change_pct_12h">Δ% 12h ↓</option>
+          <option value="change_pct_24h">Δ% 24h ↓</option>
+          <option value="spreadPct">Spread % ↓</option>
+          <option value="sellMovingWeek">Sell Volume ↓</option>
+          <option value="buyMovingWeek">Buy Volume ↓</option>
+          <option value="sellPrice">Sell Price ↓</option>
+          <option value="pred_buy_12h">Pred 12h ↓</option>
+          <option value="pred_buy_24h">Pred 24h ↓</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="picks-loading" class="center-msg">
+      <div class="spinner"></div>
+      <p>Fetching live data…</p>
+    </div>
+    <div id="picks-empty" class="center-msg hidden">
+      <p class="muted">No items match the current filters.</p>
+    </div>
+
+    <div id="picks-table-wrap" class="hidden">
+      <table id="picks-table">
+        <thead><tr id="picks-thead"></tr></thead>
+        <tbody id="picks-tbody"></tbody>
+      </table>
+      <p id="picks-no-results" class="center-msg hidden">No items match your search.</p>
+    </div>
+  </div>
+
+  <!-- ── MARKET ─────────────────────────────────────────────────────────── -->
+  <div id="panel-market" class="panel hidden">
+    <div class="panel-toolbar">
+      <span class="panel-title">All Qualified Items</span>
+      <span class="muted" id="market-count">—</span>
+    </div>
+    <div id="market-grid"></div>
+    <div id="market-loading" class="center-msg">
+      <div class="spinner"></div><p>Loading market…</p>
+    </div>
+  </div>
+
+  <!-- ── STATS ──────────────────────────────────────────────────────────── -->
+  <div id="panel-stats" class="panel hidden">
+    <div class="stats-grid">
+      <div class="stat-big-card">
+        <h3>Top Items by Volume</h3>
+        <div style="height:340px"><canvas id="chart-vol"></canvas></div>
+      </div>
+      <div class="stat-big-card">
+        <h3>Spread Distribution</h3>
+        <div style="height:340px"><canvas id="chart-spread"></canvas></div>
+      </div>
+      <div class="stat-big-card">
+        <h3>Prediction Coverage</h3>
+        <div style="height:340px"><canvas id="chart-snaps"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SETTINGS ───────────────────────────────────────────────────────── -->
+  <div id="panel-settings" class="panel hidden">
+    <div class="settings-wrap">
+      <h2 class="settings-title">Filter Configuration</h2>
+      <p class="muted" style="margin-bottom:24px">Changes apply immediately.</p>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <label>Min Item Price</label>
+          <span class="muted">Items cheaper than this are ignored</span>
+        </div>
+        <div class="setting-control">
+          <input class="cfg-input" id="cfg-min-price" type="number" min="1" step="10"/>
+          <span class="cfg-unit">coins</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <label>Max Item Price</label>
+          <span class="muted">Items more expensive than this are ignored</span>
+        </div>
+        <div class="setting-control">
+          <input class="cfg-input" id="cfg-max-price" type="number" min="1000" step="10000"/>
+          <span class="cfg-unit">coins</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <label>Max Spread %</label>
+          <span class="muted">Items with a wider spread are excluded (illiquid/manipulated)</span>
+        </div>
+        <div class="setting-control">
+          <input class="cfg-input" id="cfg-max-spread" type="number" min="1" max="200" step="1"/>
+          <span class="cfg-unit">%</span>
+        </div>
+      </div>
+
+      <button class="btn-apply" id="cfg-apply">Apply Changes</button>
+      <span class="cfg-status hidden" id="cfg-status">✓ Applied</span>
+
+      <div class="divider"></div>
+      <h2 class="settings-title">About</h2>
+      <div class="about-block">
+        <p><b>Model</b>: Temporal Transformer + per-item embeddings + FiLM modulation</p>
+        <p><b>Prediction</b>: Predicted buyPrice 12 and 24 hours ahead in a multi-task learning setup</p>
+        <p><b>Score</b> = Δ% × √(sellVol × buyVol) / (1 + spread%/10) / 1M</p>
+        <p><b>Spread penalty</b>: 1 / (1 + spread%/10) — reduces score for wide spreads</p>
+        <p style="margin-top:12px;color:var(--text-muted)">
+          Live prices: <a href="https://api.hypixel.net/v2/skyblock/bazaar" target="_blank" style="color:var(--accent)">Hypixel Bazaar API</a> · No API key required · Polled every 60s<br/>
+          Price history: <a href="https://sky.coflnet.com" target="_blank" style="color:var(--accent)">CoflNet</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="modal-overlay" class="hidden">
+  <div id="modal">
+    <div class="modal-header">
+      <div class="modal-title-wrap">
+        <h3 id="modal-title">—</h3>
+        <small id="modal-sub"></small>
+      </div>
+      <button id="modal-close">✕</button>
+    </div>
+    <div id="modal-stats-row"></div>
+    <div id="chart-history-wrap"><canvas id="chart-history"></canvas></div>
+    <p id="modal-no-data" class="center-msg hidden">No price history available from CoflNet.</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="inference.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

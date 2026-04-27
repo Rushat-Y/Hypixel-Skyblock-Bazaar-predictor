@@ -1,0 +1,20 @@
+# Ignore everything in the root by default
+/*
+
+# But keep these
+!.gitignore
+!README.md
+!trainer/
+!website/
+
+# Inside trainer — ignore local data and cache
+trainer/__pycache__/
+trainer/*.py[cod]
+trainer/*.db
+trainer/bazaar.db
+
+# Inside website — nothing to exclude (weights.json is needed for GitHub Pages)
+
+# OS
+.DS_Store
+Thumbs.db
